@@ -4,3 +4,4 @@ google-generativeai
 python-dotenv
 pyttsx3
 Werkzeug
+gunicorn==22.0.0
