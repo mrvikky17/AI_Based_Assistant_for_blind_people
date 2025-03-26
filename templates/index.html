@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoAid - AI Voice Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white">
+
+    <!-- Navbar -->
+    <nav class="flex justify-between items-center p-6">
+        <h1 class="text-2xl font-bold text-cyan-400">EchoAid</h1>
+        <div class="space-x-4 flex items-center">
+            <!-- Temperature Icon -->
+            <span id="temp-icon" class="text-cyan-400 text-lg">🌡️ Loading...</span>
+            <button class="border-2 border-cyan-400 text-cyan-400 px-4 py-2 rounded-full hover:bg-cyan-400 hover:text-black">About</button>
+            
+            
+            
+            <a href="login.html"><button class="bg-cyan-400 text-black px-4 py-2 rounded-full">Login</button></a>
+            <a href="signup.html"><button class="border-2 border-cyan-400 text-cyan-400 px-4 py-2 rounded-full hover:bg-cyan-400 hover:text-black">Sign Up</button></a>
+            
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="text-center mt-20">
+        <h2 class="text-4xl font-bold">Empowering the Blind with <br> Intelligent Voice Assistance</h2>
+        <p class="mt-4 text-gray-300">EchoAid is your smart, friendly companion. From reading texts aloud <br> to identifying surroundings and guiding navigation, we redefine independence.</p>
+        <button id="startChat" class="mt-6 bg-gradient-to-r from-cyan-400 to-blue-500 text-black px-6 py-3 rounded-full text-lg font-semibold">Get Started</button>
+    </section>
+
+    <!-- Chatbot Section -->
+    <div id="chatContainer" class="hidden mt-10 p-6 max-w-lg mx-auto bg-gray-900 rounded-lg">
+        <div id="chatBox" class="h-64 overflow-y-auto p-3 border border-gray-700 rounded-lg"></div>
+        <div class="mt-4 flex">
+            <input id="userInput" type="text" class="flex-grow p-2 rounded-lg text-black" placeholder="Type your message...">
+            <button onclick="sendMessage()" class="ml-2 bg-cyan-400 px-4 py-2 rounded-lg text-black">Send</button>
+            <button onclick="startVoiceInput()" class="ml-2 bg-green-500 px-4 py-2 rounded-lg">🎤</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("startChat").addEventListener("click", async function() {
+            document.getElementById("chatContainer").classList.remove("hidden");
+
+            // Fetch and speak temperature when chatbot opens
+            const temperatureMessage = await getWeather();
+            speakText(temperatureMessage);
+        });
+
+        async function sendMessage() {
+            let userInput = document.getElementById("userInput").value;
+            if (!userInput) return;
+            
+            let chatBox = document.getElementById("chatBox");
+            chatBox.innerHTML += `<div class='text-right text-cyan-400'>You: ${userInput}</div>`;
+
+            let response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userInput })
+            });
+
+            let data = await response.json();
+            chatBox.innerHTML += `<div class='text-left text-green-400'>AI: ${data.reply}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Read AI response aloud
+            speakText(data.reply);
+
+            document.getElementById("userInput").value = "";
+        }
+
+        function startVoiceInput() {
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                let spokenText = event.results[0][0].transcript;
+                document.getElementById("userInput").value = spokenText;
+                sendMessage();
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech Recognition Error: ", event);
+            };
+        }
+
+        function speakText(text) {
+    let speech = new SpeechSynthesisUtterance();
+    let synth = window.speechSynthesis;
+    
+    speech.text = text;
+    
+    // Detect language
+    const hindiPattern = /[\u0900-\u097F]/;
+    let lang = hindiPattern.test(text) ? "hi-IN" : "en-US";
+    speech.lang = lang;
+
+    // Set a voice matching the language
+    let voices = synth.getVoices();
+    let selectedVoice = voices.find(voice => voice.lang.startsWith(lang));
+
+    if (selectedVoice) {
+        speech.voice = selectedVoice;
+    }
+
+    speech.rate = 1;
+    speech.volume = 1;
+    speech.pitch = 1;
+
+    synth.speak(speech);
+}
+
+        // Fetch Live Temperature
+        async function getWeather() {
+            const apiKey = 'c06cf0f15e6295896b5c52b3257e543b'; 
+            const city = 'Mathura';
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.main) {
+                    const temperature = data.main.temp;
+                    document.getElementById('temp-icon').innerHTML = `🌡️ ${temperature}°C`;
+                    return `The current temperature in ${city} is ${temperature} degrees Celsius.`;
+                } else {
+                    document.getElementById('temp-icon').innerHTML = "⚠️ Error fetching";
+                    return "I couldn't fetch the temperature right now.";
+                }
+            } catch (error) {
+                document.getElementById('temp-icon').innerHTML = "⚠️ Network error";
+                return "There was a network error while fetching the temperature.";
+            }
+        }
+
+        window.onload = getWeather; // Fetch weather on page load
+    </script>
+
+</body>
+</html>
